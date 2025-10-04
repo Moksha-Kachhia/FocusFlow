@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Frontend (Node.js)
+  - package-ecosystem: "npm"
+    directory: "/frontend"       # location of package.json
+    schedule:
+      interval: "daily"          # check for updates daily
+    commit-message:
+      prefix: "chore"
+    ignore:
+      - dependency-name: "eslint"
+        versions: ["9.x.x"]      # optional: ignore ESLint major updates
+
+  # Backend (Python)
+  - package-ecosystem: "pip"
+    directory: "/backend"        # location of requirements.txt
+    schedule:
+      interval: "daily"
+    commit-message:
+      prefix: "chore"
