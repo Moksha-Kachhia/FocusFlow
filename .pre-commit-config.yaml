@@ -16,5 +16,14 @@ repos:
     rev: v8.47.0
     hooks:
       - id: eslint
-        additional_dependencies: [ "eslint-config-prettier", "eslint-plugin-prettier", "prettier" ]
+        name: eslint
+        language: node
+        additional_dependencies:
+          - eslint
+          - "@eslint/js"
+          - eslint-plugin-react
+          - eslint-plugin-react-hooks
+          - eslint-config-prettier
+          - eslint-plugin-prettier
+        entry: npx eslint frontend --ext .js,.jsx,.ts,.tsx --config frontend/eslint.config.cjs
         files: \.(js|jsx|ts|tsx|json|css|scss|md|html)$
