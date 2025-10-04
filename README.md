@@ -43,7 +43,7 @@ Students with learning disabilities (like ADHD and dyslexia) or limited resource
 - README Badge: shows latest workflow status
 ![CI](https://github.com/youruser/inclusive-study-app/actions/workflows/main.yml/badge.svg)
 
-###Pipeline benefits:
+### Pipeline benefits:
 Ensures high code quality, reduces human error, speeds up deployments, and demonstrates security-conscious development practices.
 
 
