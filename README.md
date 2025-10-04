@@ -41,7 +41,7 @@ Students with learning disabilities (like ADHD and dyslexia) or limited resource
 - Dependabot: automatic dependency updates + security alerts
 - Branch Protection Rules: require CI to pass before merging to main
 - README Badge: shows latest workflow status
-![CI](https://github.com/youruser/inclusive-study-app/actions/workflows/main.yml/badge.svg)
+![CI](https://github.com/Moksha-Kachhia/FocusFlow/actions/workflows/main.yml/badge.svg)
 
 ### Pipeline benefits:
 Ensures high code quality, reduces human error, speeds up deployments, and demonstrates security-conscious development practices.
