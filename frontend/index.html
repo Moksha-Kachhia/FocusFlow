@@ -5,38 +5,57 @@
   <title>FocusFlow Voice Test</title>
 </head>
 <body>
+  <!-- Main UI Elements -->
   <h2>🎙️ Record a voice note</h2>
   <button id="record-btn">Start Recording</button>
   <button id="stop-btn" disabled>Stop</button>
 
-  <p id="status"></p>
-  <p id="feedback"></p>
+  <!-- Status and feedback display areas -->
+  <p id="status"></p>      <!-- Shows recording status (Recording..., Uploading..., etc.) -->
+  <p id="feedback"></p>    <!-- Shows the transcribed text result -->
 
   <script>
+    // Debug: Confirm JavaScript is loading
     console.log("JavaScript is loading...");
 
-    let mediaRecorder;
-    let audioChunks = [];
+    // Global variables to store recording data
+    let mediaRecorder;        // The MediaRecorder object that handles audio recording
+    let audioChunks = [];     // Array to store audio data chunks as they're recorded
 
-    const recordBtn = document.getElementById("record-btn");
-    const stopBtn = document.getElementById("stop-btn");
-    const statusEl = document.getElementById("status");
-    const feedbackEl = document.getElementById("feedback");
+    // Get references to HTML elements so we can update them
+    const recordBtn = document.getElementById("record-btn");    // Start recording button
+    const stopBtn = document.getElementById("stop-btn");        // Stop recording button
+    const statusEl = document.getElementById("status");         // Status message element
+    const feedbackEl = document.getElementById("feedback");     // Transcription result element
 
+    // Debug: Confirm we found all the HTML elements
     console.log("Elements found:", {recordBtn, stopBtn, statusEl, feedbackEl});
 
+    // EVENT LISTENER: Start Recording Button
     recordBtn.addEventListener("click", async () => {
       try {
         console.log("Record button clicked!");
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.start();
-        statusEl.textContent = "🎙️ Recording...";
-        recordBtn.disabled = true;
-        stopBtn.disabled = false;
 
+        // Request access to user's microphone
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // Create MediaRecorder to capture audio from the microphone stream
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.start();  // Begin recording
+
+      // attach stop listner right after creating the media recorder
+
+
+
+
+        // Update UI to show recording state
+        statusEl.textContent = "🎙️ Recording...";
+        recordBtn.disabled = true;   // Disable start button
+        stopBtn.disabled = false;    // Enable stop button
+
+        // Listen for audio data chunks as they're recorded
         mediaRecorder.addEventListener("dataavailable", e => {
-          audioChunks.push(e.data);
+          audioChunks.push(e.data);  // Store each chunk of audio data
         });
       } catch (error) {
         console.error("Error starting recording:", error);
@@ -44,51 +63,66 @@
       }
     });
 
+    // EVENT LISTENER: Stop Recording Button
     stopBtn.addEventListener("click", () => {
       try {
         console.log("Stop button clicked!");
+
+        // Stop the recording
         mediaRecorder.stop();
-        stopBtn.disabled = true;
-        recordBtn.disabled = false;
+
+        // Update UI to show stopped state
+        stopBtn.disabled = true;     // Disable stop button
+        recordBtn.disabled = false;  // Re-enable start button
         statusEl.textContent = "⏹️ Recording stopped.";
 
+        // Wait for recording to fully stop, then process the audio
         mediaRecorder.addEventListener("stop", async () => {
-        const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-        const formData = new FormData();
-        formData.append("audio", audioBlob, "voice_note.webm");
-        audioChunks = [];
+          // Convert recorded audio chunks into a single audio file
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
-        statusEl.textContent = "📤 Uploading for transcription...";
+          // Create FormData to send the audio file to the backend
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "voice_note.webm");
+          audioChunks = [];  // Clear chunks for next recording
 
-        console.log("About to send request...");
+          // Show uploading status
+          statusEl.textContent = "📤 Uploading for transcription...";
 
-        try {
-          const res = await fetch("http://127.0.0.1:5000/transcribe", {
-            method: "POST",
-            body: formData,
-          });
+          console.log("About to send request...");
 
-          console.log("Response status:", res.status);
+          try {
+            // Send POST request to Flask backend with the audio file
+            const res = await fetch("http://127.0.0.1:5000/transcribe", {
+              method: "POST",
+              body: formData,  // Send the audio file in the request body
+            });
 
-          if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
+            // Check if the request was successful
+            if (!res.ok) {
+              throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            // Parse the JSON response from the backend
+            const data = await res.json();
+            console.log("Response data:", data);
+
+            console.log("Received from backend:", data);
+
+            // Update the UI with the transcription result and Gemini feedback
+            feedbackEl.innerHTML = `
+            <strong>📝 Transcribed text:</strong> ${data.transcription}<br><br>
+            <strong>🤖 AI Feedback:</strong> ${data.feedback}
+          `;
+
+            console.log("Updated status element:", statusEl.textContent);
+            console.log("Updated feedback element:", feedbackEl.textContent);
+
+          } catch (error) {
+            console.error("Error:", error);
+            statusEl.textContent = "❌ Error occurred";
+            feedbackEl.textContent = "Error: " + error.message;
           }
-
-          const data = await res.json();
-          console.log("Response data:", data);
-
-          // Force update the elements
-          statusEl.textContent = "✅ Transcribed!";
-          feedbackEl.textContent = "📝 Transcribed text: " + data.transcription;
-
-          console.log("Updated status element:", statusEl.textContent);
-          console.log("Updated feedback element:", feedbackEl.textContent);
-
-        } catch (error) {
-          console.error("Error:", error);
-          statusEl.textContent = "❌ Error occurred";
-          feedbackEl.textContent = "Error: " + error.message;
-        }
         });
       } catch (error) {
         console.error("Error stopping recording:", error);
