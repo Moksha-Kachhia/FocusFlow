@@ -20,7 +20,6 @@ repos:
         language: node
         additional_dependencies:
           - eslint
-          - "@eslint/js"
           - eslint-plugin-react
           - eslint-plugin-react-hooks
           - eslint-config-prettier
