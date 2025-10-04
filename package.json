@@ -10,5 +10,8 @@
   },
   "scripts": {
     "lint": "eslint frontend --ext .js,.jsx,.ts,.tsx --config frontend/eslint.config.cjs"
+  },
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.17.0"
   }
 }
