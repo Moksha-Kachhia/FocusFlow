@@ -118,7 +118,7 @@ VITE_API_BASE=https://your-backend.onrender.com
 Push + import project on Vercel → auto-detect Vite build
 ```
 
-### 6) Notes / Tips
+### Notes / Tips
 Mic access: Chrome/Edge required for Web Speech API (HTTPS or localhost).
 CORS: Ensure ALLOWED_ORIGIN matches your frontend URL.
 Accessibility angle: Minimal UI + voice feedback supports neurodiverse learners.
