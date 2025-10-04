@@ -5,5 +5,8 @@
     "eslint-define-config": "^2.1.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^6.1.1"
+  },
+  "scripts": {
+    "lint": "eslint frontend --ext .js,.jsx,.ts,.tsx --config frontend/eslint.config.cjs"
   }
 }
