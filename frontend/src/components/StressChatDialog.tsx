@@ -30,90 +30,26 @@ const StressChatDialog = ({ open, onOpenChange }: StressChatDialogProps) => {
     setInput("");
     setIsLoading(true);
 
-    let assistantContent = "";
-    const upsertAssistant = (chunk: string) => {
-      assistantContent += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant") {
-          return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantContent } : m
-          );
-        }
-        return [...prev, { role: "assistant", content: assistantContent }];
-      });
-    };
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stress-chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ messages: [...messages, userMessage] }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/stress_chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      });
 
-      if (!response.ok || !response.body) {
-        if (response.status === 429) {
-          toast({
-            title: "Rate limit exceeded",
-            description: "Please try again later.",
-            variant: "destructive",
-          });
-          setMessages((prev) => prev.slice(0, -1));
-          return;
-        }
-        if (response.status === 402) {
-          toast({
-            title: "Payment required",
-            description: "Please add credits to your workspace.",
-            variant: "destructive",
-          });
-          setMessages((prev) => prev.slice(0, -1));
-          return;
-        }
-        throw new Error("Failed to start stream");
+      if (!response.ok) {
+        throw new Error("Failed to get response from server");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let textBuffer = "";
-      let streamDone = false;
+      const data = await response.json();
 
-      while (!streamDone) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (line.startsWith(":") || line.trim() === "") continue;
-          if (!line.startsWith("data: ")) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) upsertAssistant(content);
-          } catch {
-            textBuffer = line + "\n" + textBuffer;
-            break;
-          }
-        }
+      if (!data.success || !data.reply) {
+        throw new Error("Invalid response from backend");
       }
+
+      // Add assistant reply to messages
+      const assistantMessage: Message = { role: "assistant", content: data.reply };
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -121,7 +57,7 @@ const StressChatDialog = ({ open, onOpenChange }: StressChatDialogProps) => {
         description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
-      setMessages((prev) => prev.slice(0, -1));
+      setMessages((prev) => prev.slice(0, -1)); // remove user's message if failed
     } finally {
       setIsLoading(false);
     }
@@ -134,6 +70,7 @@ const StressChatDialog = ({ open, onOpenChange }: StressChatDialogProps) => {
           <DialogTitle>Talk it out - You've got this! 💪</DialogTitle>
         </DialogHeader>
 
+        {/* Chat Area */}
         <ScrollArea className="flex-1 pr-4">
           <div className="space-y-4">
             {messages.length === 0 ? (
@@ -149,10 +86,10 @@ const StressChatDialog = ({ open, onOpenChange }: StressChatDialogProps) => {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                    className={`max-w-[80%] rounded-lg px-4 py-2 whitespace-pre-line ${
                       message.role === "user"
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
+                        : "bg-muted text-foreground"
                     }`}
                   >
                     {message.content}
@@ -163,6 +100,7 @@ const StressChatDialog = ({ open, onOpenChange }: StressChatDialogProps) => {
           </div>
         </ScrollArea>
 
+        {/* Input Area */}
         <div className="flex gap-2 pt-4 border-t">
           <Input
             value={input}

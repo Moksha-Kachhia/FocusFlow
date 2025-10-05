@@ -5,16 +5,22 @@ from elevenlabs.play import play
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+import uuid
 
 # --- Setup ---
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="/")
 CORS(app)
 os.makedirs("backend/uploads", exist_ok=True)
+os.makedirs("backend/audio", exist_ok=True)
 
 # --- Load API Keys ---
 load_dotenv("backend/.env")
 elevenlabs = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+# --- Initialize Gemini persistent chat session ---
+model = genai.GenerativeModel("gemini-flash-latest")
+chat = model.start_chat(history=[])
 
 
 @app.route("/")
@@ -35,10 +41,14 @@ def transcribe_audio():
     transcribed_text = transcription.text
     print(f"🗣️ Transcription: {transcribed_text}")
 
-    # 3️⃣ Generate Gemini feedback
+    # 3️⃣ Send to persistent Gemini chat (with memory)
     try:
-        model = genai.GenerativeModel("gemini-flash-latest")
-        prompt_desc = """
+        # Add user message
+        chat.history.append({"role": "user", "parts": [transcribed_text]})
+
+        # Generate response using chat memory
+        response = chat.send_message(
+            f"""
         You are an AI study partner using the Feynman technique.
         Your role is to help the student learn by explaining and questioning — not by lecturing.
         Rules:
@@ -51,34 +61,35 @@ def transcribe_audio():
         - Don’t ask if you already understand the point.
         - Only probe new or unclear ideas. Keep on topic, and make sure to ask follow up leading questions that are relevant.
         - If the explanation is incorrect, correct it and explain why it's incorrect, in a nice manner.
-        - Do not use any Markdown, LaTeX, or formatting characters.
-            Avoid using **asterisks**, **underscores**, **backticks**, or **dollar signs**.
-            Write your response as plain text only.
-            If referring to math or equations, write them in plain words (e.g. 'x squared' instead of '$x^2$').
 
+        Do not use Markdown, LaTeX, or formatting characters.
+        Avoid using **asterisks**, **underscores**, **backticks**, or **dollar signs**.
+        Write your response as plain text only.
+        If referring to math or equations, write them in plain words (e.g., 'x squared' instead of '$x^2$').
         """
-        prompt = f"{prompt_desc}\n\nUser said: {transcribed_text}"
-        response = model.generate_content(prompt)
+        )
+
         gemini_feedback = response.text.strip()
         print(f"💬 Gemini Feedback: {gemini_feedback}")
+
     except Exception as e:
         print("❌ Gemini error:", e)
         gemini_feedback = f"I heard: '{transcribed_text}'. Keep practicing!"
 
-    # 4️⃣ Generate speech quickly with ElevenLabs (turbo model)
+    # 4️⃣ Speak Gemini’s reply
     try:
         audio_stream = elevenlabs.text_to_speech.convert(
             text=gemini_feedback,
             voice_id="cgSgspJ2msm6clMCkdW9",
-            model_id="eleven_turbo_v2",  # ⚡ faster model for near-instant playback
+            model_id="eleven_multilingual_v2",
             output_format="mp3_44100_128",
         )
-        play(audio_stream)  # 🎧 Plays immediately while streaming
-        print("🎶 Audio playback started instantly.")
+        play(audio_stream)
+        print("🎶 Audio played successfully.")
     except Exception as e:
-        print("❌ ElevenLabs playback error:", e)
+        print("❌ ElevenLabs error:", e)
 
-    # 5️⃣ Return text results only (no audio URL)
+    # 5️⃣ Return text output (frontend shows transcription + AI response)
     return jsonify(
         {
             "success": True,
@@ -87,6 +98,98 @@ def transcribe_audio():
             "message": "Success",
         }
     )
+
+
+@app.route("/stress_chat", methods=["POST"])
+def stress_chat():
+    data = request.json
+    messages = data.get("messages", [])
+
+    if not messages:
+        return jsonify({"success": False, "message": "No messages provided"}), 400
+
+    # Build the conversation as a single prompt for Gemini
+    conversation_text = "\n".join(
+        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages]
+    )
+
+    prompt = f"""
+You are a kind, calm, and supportive AI therapist.
+Your job is to help users manage stress, anxiety, and emotional overwhelm.
+Guidelines:
+- Respond in a warm, conversational, and empathetic tone.
+- Use short messages — 1 to 3 sentences max.
+- Do not give medical advice.
+- Focus on listening, validation, and gentle guidance.
+- Avoid sounding robotic or overly formal.
+- If appropriate, ask thoughtful follow-up questions.
+
+Conversation so far:
+{conversation_text}
+
+Respond as the therapist:
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        reply = response.text.strip()
+        print("✅ Stress Chat Reply Generated:\n", reply)
+
+        return jsonify({"success": True, "reply": reply})
+
+    except Exception as e:
+        print("❌ Stress Chat Error:", e)
+        return (
+            jsonify(
+                {"success": False, "message": "Error generating therapist response"}
+            ),
+            500,
+        )
+
+
+@app.route("/task_breakdown", methods=["POST"])
+def task_breakdown():
+    data = request.json
+    text = data.get("text", "")
+
+    if not text:
+        return jsonify({"success": False, "message": "No text provided"}), 400
+
+    # 🧠 Prompt: simple bullet-point format
+    prompt = f"""
+Break the following task into a clear list of action steps.
+
+Rules:
+- Write in plain text only.
+- Use simple bullet points ("-") for each task.
+- Do NOT include "Step 1", "Step 2", or numbering.
+- Do NOT use bold text, asterisks, or any Markdown formatting.
+- Keep each point short and actionable.
+
+Input:
+{text}
+
+Output example:
+- Define the goal
+- Gather materials
+- Begin the first phase
+- Review and improve
+"""
+
+    try:
+        # ✅ Use same Gemini client as breakdown
+        task_model = genai.GenerativeModel("gemini-1.5-flash")
+        response = task_model.generate_content(prompt)
+
+        breakdown = response.text.strip()
+
+        print("✅ Bullet Point Breakdown Generated:\n", breakdown)
+
+        return jsonify({"success": True, "task_breakdown": breakdown})
+
+    except Exception as e:
+        print("❌ Task Breakdown Gemini Error:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @app.errorhandler(404)
