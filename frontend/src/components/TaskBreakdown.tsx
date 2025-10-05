@@ -20,27 +20,24 @@ const TaskBreakdown = () => {
     try {
       const response = await fetch("http://localhost:5000/task_breakdown", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: task }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server error: ${errorText}`);
+        throw new Error("Failed to get breakdown");
       }
 
       const data = await response.json();
 
       if (!data.success || !data.task_breakdown) {
-        throw new Error("Invalid response from server");
+        throw new Error("Invalid response from backend");
       }
 
-      // Split backend text into bullet points
+      // Cleanly split bullet points from backend text
       const lines = data.task_breakdown
         .split("\n")
-        .map((line) => line.trim().replace(/^[-•]\s*/, "")) // remove '-' or '•'
+        .map((line) => line.trim().replace(/^[-•]\s*/, "")) // remove "-" or "•"
         .filter((line) => line.length > 0);
 
       setBullets(lines);
@@ -63,11 +60,11 @@ const TaskBreakdown = () => {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader>
+      <CardHeader className="flex-shrink-0">
         <CardTitle>Break Down Your Task</CardTitle>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col space-y-4">
+      <CardContent className="flex-1 flex flex-col space-y-4 min-h-0">
         <Textarea
           placeholder="Enter a big task you want to tackle..."
           value={task}
@@ -92,15 +89,13 @@ const TaskBreakdown = () => {
         </Button>
 
         {bullets.length > 0 && (
-          <div className="flex-1 overflow-y-auto mt-4">
-            <h3 className="font-semibold text-sm text-muted-foreground mb-2">
+          <div className="flex-1 min-h-0 flex flex-col">
+            <h3 className="font-semibold text-sm text-muted-foreground mb-3 flex-shrink-0">
               Your Action Plan:
             </h3>
-            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground overflow-y-auto pr-2">
               {bullets.map((item, i) => (
-                <li key={i} className="leading-snug">
-                  {item}
-                </li>
+                <li key={i}>{item}</li>
               ))}
             </ul>
           </div>

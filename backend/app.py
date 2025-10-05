@@ -155,41 +155,37 @@ def task_breakdown():
     if not text:
         return jsonify({"success": False, "message": "No text provided"}), 400
 
-    # 🧠 Prompt: simple bullet-point format
     prompt = f"""
-Break the following task into a clear list of action steps.
+You are a concise task decomposer. Convert the user's goal into concrete, do-able steps.
 
-Rules:
-- Write in plain text only.
-- Use simple bullet points ("-") for each task.
-- Do NOT include "Step 1", "Step 2", or numbering.
-- Do NOT use bold text, asterisks, or any Markdown formatting.
-- Keep each point short and actionable.
+STRICT OUTPUT RULES (must follow all):
+- Return ONLY bullet points, each on its own line, starting with "- ".
+- 5 steps exactly (unless the user explicitly asks for a different number).
+- Each step starts with a strong verb (Plan, Define, Set, Create, Build, Practice, Review, etc.).
+- 6–12 words per step. One action per step. Step-by-step sequence.
+- Prefer observable actions over vague advice; include practical detail when helpful.
+- No numbering, headings, summaries, tables, code blocks, quotes, emojis, or extra text.
 
-Input:
+Task:
 {text}
 
-Output example:
-- Define the goal
-- Gather materials
-- Begin the first phase
-- Review and improve
+If the input is vague, infer a reasonable concrete goal and proceed.
 """
 
     try:
-        # ✅ Use same Gemini client as breakdown
-        task_model = genai.GenerativeModel("gemini-1.5-flash")
-        response = task_model.generate_content(prompt)
-
+        response = model.generate_content(prompt)
         breakdown = response.text.strip()
 
-        print("✅ Bullet Point Breakdown Generated:\n", breakdown)
+        print("✅ Task Breakdown Generated:\n", breakdown)
 
         return jsonify({"success": True, "task_breakdown": breakdown})
 
     except Exception as e:
         print("❌ Task Breakdown Gemini Error:", e)
-        return jsonify({"success": False, "message": str(e)}), 500
+        return (
+            jsonify({"success": False, "message": "Error generating task breakdown"}),
+            500,
+        )
 
 
 @app.errorhandler(404)
