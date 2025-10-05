@@ -28,6 +28,25 @@ def serve_index():
     return send_from_directory("../frontend/dist", "index.html")
 
 
+@app.route("/breakdown", methods=["POST"])
+def breakdown_text():
+    data = request.json
+    text = data.get("text", "")
+
+    if not text:
+        return jsonify({"success": False, "message": "No text provided"}), 400
+
+    prompt = f"Break down the following text into simpler parts:\n\n{text}\n\nProvide a clear and concise breakdown."
+
+    try:
+        response = model.generate_content(prompt)
+        breakdown = response.text.strip()
+        return jsonify({"success": True, "breakdown": breakdown})
+    except Exception as e:
+        print("❌ Gemini error:", e)
+        return jsonify({"success": False, "message": "Error generating breakdown"}), 500
+
+
 @app.route("/transcribe", methods=["POST"])
 def transcribe_audio():
     # 1️⃣ Receive uploaded audio
