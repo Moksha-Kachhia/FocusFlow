@@ -2,17 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Subtask {
-  title: string;
-  description: string;
-}
 
 const TaskBreakdown = () => {
   const [task, setTask] = useState("");
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
+  const [bullets, setBullets] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -20,10 +15,10 @@ const TaskBreakdown = () => {
     if (!task.trim() || isLoading) return;
 
     setIsLoading(true);
-    setSubtasks([]);
+    setBullets([]);
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/breakdown", {
+      const response = await fetch("http://localhost:5000/task_breakdown", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -31,29 +26,34 @@ const TaskBreakdown = () => {
         body: JSON.stringify({ text: task }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to get breakdown");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${errorText}`);
       }
 
-      const lines = data.breakdown.split("\n").filter(line => line.trim());
-      const parsedSubtasks = lines.slice(0, 5).map((line, index) => ({
-        title: `Step ${index + 1}`,
-        description: line.replace(/^\d+\.\s*/, "").trim(),
-      }));
+      const data = await response.json();
 
-      setSubtasks(parsedSubtasks);
+      if (!data.success || !data.task_breakdown) {
+        throw new Error("Invalid response from server");
+      }
+
+      // Split backend text into bullet points
+      const lines = data.task_breakdown
+        .split("\n")
+        .map((line) => line.trim().replace(/^[-•]\s*/, "")) // remove '-' or '•'
+        .filter((line) => line.length > 0);
+
+      setBullets(lines);
 
       toast({
         title: "Task broken down!",
-        description: "Here are your actionable subtasks.",
+        description: "Here’s your simple action plan.",
       });
     } catch (error) {
       console.error("Error breaking down task:", error);
       toast({
         title: "Error",
-        description: "Could not break down the task.",
+        description: "Could not break down the task. Try again later.",
         variant: "destructive",
       });
     } finally {
@@ -63,10 +63,11 @@ const TaskBreakdown = () => {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="flex-shrink-0">
+      <CardHeader>
         <CardTitle>Break Down Your Task</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col space-y-4 min-h-0">
+
+      <CardContent className="flex-1 flex flex-col space-y-4">
         <Textarea
           placeholder="Enter a big task you want to tackle..."
           value={task}
@@ -90,29 +91,18 @@ const TaskBreakdown = () => {
           )}
         </Button>
 
-        {subtasks.length > 0 && (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <h3 className="font-semibold text-sm text-muted-foreground mb-3 flex-shrink-0">
+        {bullets.length > 0 && (
+          <div className="flex-1 overflow-y-auto mt-4">
+            <h3 className="font-semibold text-sm text-muted-foreground mb-2">
               Your Action Plan:
             </h3>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-2">
-              {subtasks.map((subtask, i) => (
-                <div
-                  key={i}
-                  className="border border-border rounded-lg p-3 space-y-2 bg-card hover:bg-accent/5 transition-colors"
-                >
-                  <div className="flex items-start gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{subtask.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {subtask.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
+              {bullets.map((item, i) => (
+                <li key={i} className="leading-snug">
+                  {item}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
       </CardContent>

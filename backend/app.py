@@ -28,25 +28,6 @@ def serve_index():
     return send_from_directory("../frontend/dist", "index.html")
 
 
-@app.route("/breakdown", methods=["POST"])
-def breakdown_text():
-    data = request.json
-    text = data.get("text", "")
-
-    if not text:
-        return jsonify({"success": False, "message": "No text provided"}), 400
-
-    prompt = f"Break down the following text into simpler parts:\n\n{text}\n\nProvide a clear and concise breakdown."
-
-    try:
-        response = model.generate_content(prompt)
-        breakdown = response.text.strip()
-        return jsonify({"success": True, "breakdown": breakdown})
-    except Exception as e:
-        print("❌ Gemini error:", e)
-        return jsonify({"success": False, "message": "Error generating breakdown"}), 500
-
-
 @app.route("/transcribe", methods=["POST"])
 def transcribe_audio():
     # 1️⃣ Receive uploaded audio
@@ -117,6 +98,98 @@ def transcribe_audio():
             "message": "Success",
         }
     )
+
+
+@app.route("/stress_chat", methods=["POST"])
+def stress_chat():
+    data = request.json
+    messages = data.get("messages", [])
+
+    if not messages:
+        return jsonify({"success": False, "message": "No messages provided"}), 400
+
+    # Build the conversation as a single prompt for Gemini
+    conversation_text = "\n".join(
+        [f"{msg['role'].capitalize()}: {msg['content']}" for msg in messages]
+    )
+
+    prompt = f"""
+You are a kind, calm, and supportive AI therapist.
+Your job is to help users manage stress, anxiety, and emotional overwhelm.
+Guidelines:
+- Respond in a warm, conversational, and empathetic tone.
+- Use short messages — 1 to 3 sentences max.
+- Do not give medical advice.
+- Focus on listening, validation, and gentle guidance.
+- Avoid sounding robotic or overly formal.
+- If appropriate, ask thoughtful follow-up questions.
+
+Conversation so far:
+{conversation_text}
+
+Respond as the therapist:
+"""
+
+    try:
+        response = model.generate_content(prompt)
+        reply = response.text.strip()
+        print("✅ Stress Chat Reply Generated:\n", reply)
+
+        return jsonify({"success": True, "reply": reply})
+
+    except Exception as e:
+        print("❌ Stress Chat Error:", e)
+        return (
+            jsonify(
+                {"success": False, "message": "Error generating therapist response"}
+            ),
+            500,
+        )
+
+
+@app.route("/task_breakdown", methods=["POST"])
+def task_breakdown():
+    data = request.json
+    text = data.get("text", "")
+
+    if not text:
+        return jsonify({"success": False, "message": "No text provided"}), 400
+
+    # 🧠 Prompt: simple bullet-point format
+    prompt = f"""
+Break the following task into a clear list of action steps.
+
+Rules:
+- Write in plain text only.
+- Use simple bullet points ("-") for each task.
+- Do NOT include "Step 1", "Step 2", or numbering.
+- Do NOT use bold text, asterisks, or any Markdown formatting.
+- Keep each point short and actionable.
+
+Input:
+{text}
+
+Output example:
+- Define the goal
+- Gather materials
+- Begin the first phase
+- Review and improve
+"""
+
+    try:
+        # ✅ Use same Gemini client as breakdown
+        task_model = genai.GenerativeModel("gemini-1.5-flash")
+        response = task_model.generate_content(prompt)
+
+        breakdown = response.text.strip()
+
+        print("✅ Bullet Point Breakdown Generated:\n", breakdown)
+
+        return jsonify({"success": True, "task_breakdown": breakdown})
+
+    except Exception as e:
+        print("❌ Task Breakdown Gemini Error:", e)
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @app.errorhandler(404)
