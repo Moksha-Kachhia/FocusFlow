@@ -4,9 +4,13 @@ from elevenlabs import ElevenLabs
 import google.generativeai as genai
 from dotenv import load_dotenv
 import os
+from flask import Flask, send_from_directory
+
 
 # --- Flask setup ---
-app = Flask(__name__)
+# app = Flask(__name__)
+app = Flask(__name__, static_folder="../frontend/dist", static_url_path="/")
+
 CORS(app)  # allow frontend access
 os.makedirs("backend/uploads", exist_ok=True)
 
@@ -22,9 +26,14 @@ genai.configure(api_key=gemini_key)
 # --- ROUTES ---
 
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "FocusFlow Backend is running!", "status": "success"})
+# @app.route("/", methods=["GET"])
+# def home():
+#    return jsonify({"message": "FocusFlow Backend is running!", "status": "success"})
+
+
+@app.route("/")
+def serve_index():
+    return send_from_directory("../frontend/dist", "index.html")
 
 
 @app.route("/transcribe", methods=["POST"])
@@ -77,6 +86,11 @@ def transcribe_audio():
             "message": "Transcription and feedback successful!",
         }
     )
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory("../frontend/dist", "index.html")
 
 
 if __name__ == "__main__":
