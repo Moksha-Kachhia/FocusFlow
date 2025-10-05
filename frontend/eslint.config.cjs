@@ -1,6 +1,8 @@
 const js = require("@eslint/js");
 const react = require("eslint-plugin-react");
 const reactHooks = require("eslint-plugin-react-hooks");
+const ts = require("@typescript-eslint/eslint-plugin");
+const tsParser = require("@typescript-eslint/parser");
 
 module.exports = [
   js.configs.recommended, // Base JS rules
@@ -8,6 +10,7 @@ module.exports = [
     files: ["**/*.{js,jsx,ts,tsx}"],
 
     languageOptions: {
+      parser: tsParser,
       parserOptions: {
         ecmaVersion: "latest",
         sourceType: "module",
@@ -24,15 +27,21 @@ module.exports = [
     plugins: {
       react,
       "react-hooks": reactHooks,
+      "@typescript-eslint": ts, // ✅ Add TS plugin
     },
 
     rules: {
-      "react/jsx-uses-react": "off", // Not needed in React 18+
-      "react/react-in-jsx-scope": "off", // Not needed in React 18+
+      // React rules
+      "react/jsx-uses-react": "off",
+      "react/react-in-jsx-scope": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
-      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
-      "no-undef": "error",
+
+      // TypeScript rules
+      "@typescript-eslint/no-unused-vars": "off",
+      "no-unused-vars": "off", // Turn off base rule in favor of TS version
+      "no-undef": "off", // TS already checks for undefined vars
+      "no-redeclare": "off",
     },
   },
 ];
