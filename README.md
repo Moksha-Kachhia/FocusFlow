@@ -2,6 +2,8 @@
 
 > A mobile-first productivity and study app designed with accessibility in mind: from voice-driven learning to distraction-free study modes. Our focus is on supporting students with ADHD, learning disabilities, and diverse study needs, while being helpful for *all students* to make studying more enjoyable, inclusive, and effective.
 
+Check our our devpost here: https://devpost.com/software/focus-flow-nr80uo
+
 ## 💡 Inspiration
 Students with learning disabilities (like ADHD and dyslexia) or limited resources often struggle with traditional study tools. FocusFlow helps every student learn in the way that works best for them, through focus, reflection, and emotional support.
 
